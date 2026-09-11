@@ -39,7 +39,7 @@ services:
     routes:
       - type: rewrite
         source: /api/*
-        destination: https://learnai-api.onrender.com/api/*
+        destination: https://learnai-api-tmq7.onrender.com/api/*
       - type: rewrite
         source: /*
         destination: /index.html
