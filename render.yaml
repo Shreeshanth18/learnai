@@ -2,7 +2,6 @@ services:
   - type: web
     name: learnai-api
     runtime: node
-    rootDir: /
     buildCommand: npm install -g pnpm && pnpm install --frozen-lockfile && pnpm --filter @workspace/api-server build
     startCommand: pnpm --filter @workspace/api-server start
     healthCheckPath: /api/healthz
@@ -26,7 +25,6 @@ services:
   - type: web
     name: learnai-frontend
     runtime: static
-    rootDir: /
     buildCommand: npm install -g pnpm && pnpm install --frozen-lockfile && pnpm --filter @workspace/learnai-platform build
     staticPublishPath: artifacts/learnai-platform/dist/public
     plan: free
