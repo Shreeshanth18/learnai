@@ -2,7 +2,7 @@ services:
   - type: web
     name: learnai-api
     runtime: node
-    buildCommand: npm install -g pnpm && pnpm install --frozen-lockfile && pnpm --filter @workspace/api-server build
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @workspace/api-server build
     startCommand: pnpm --filter @workspace/api-server start
     healthCheckPath: /api/healthz
     plan: free
@@ -25,7 +25,7 @@ services:
   - type: web
     name: learnai-frontend
     runtime: static
-    buildCommand: npm install -g pnpm && pnpm install --frozen-lockfile && pnpm --filter @workspace/learnai-platform build
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @workspace/learnai-platform build
     staticPublishPath: artifacts/learnai-platform/dist/public
     envVars:
       - key: NODE_ENV
