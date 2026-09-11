@@ -27,7 +27,6 @@ services:
     runtime: static
     buildCommand: npm install -g pnpm && pnpm install --frozen-lockfile && pnpm --filter @workspace/learnai-platform build
     staticPublishPath: artifacts/learnai-platform/dist/public
-    plan: free
     envVars:
       - key: NODE_ENV
         value: production
