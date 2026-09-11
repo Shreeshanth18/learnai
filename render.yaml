@@ -37,7 +37,7 @@ services:
       - key: VITE_CLERK_PUBLISHABLE_KEY
         sync: false
       - key: VITE_CLERK_PROXY_URL
-        value: https://learnai-frontend.onrender.com/api/__clerk
+        value: https://learnai-frontend-41mz.onrender.com/api/__clerk
     routes:
       - type: rewrite
         source: /api/*
