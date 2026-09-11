@@ -1,0 +1,276 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: learners
+    description: Authenticated learner profile operations
+  - name: learning
+    description: Authenticated learning activity and progress
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /learners/me:
+    post:
+      operationId: ensureLearner
+      tags: [learners]
+      summary: Create or update the signed-in learner record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LearnerProfileInput"
+      responses:
+        "201":
+          description: Learner record created or refreshed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearnerProfile"
+        "401":
+          description: Authentication required
+    patch:
+      operationId: updateLearner
+      tags: [learners]
+      summary: Update the signed-in learner profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LearnerProfileUpdate"
+      responses:
+        "200":
+          description: Updated learner record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearnerProfile"
+        "401":
+          description: Authentication required
+  /learners/me/dashboard:
+    get:
+      operationId: getLearnerDashboard
+      tags: [learning]
+      summary: Get the signed-in learner dashboard
+      responses:
+        "200":
+          description: Dashboard state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearnerDashboard"
+        "401": { description: Authentication required }
+  /learners/me/course-progress:
+    post:
+      operationId: saveCourseProgress
+      tags: [learning]
+      summary: Save course progress
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CourseProgressInput" }
+      responses:
+        "200":
+          description: Saved progress
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CourseProgress" }
+        "401": { description: Authentication required }
+  /learners/me/quiz-attempts:
+    post:
+      operationId: recordQuizAttempt
+      tags: [learning]
+      summary: Record a quiz attempt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/QuizAttemptInput" }
+      responses:
+        "201":
+          description: Recorded attempt
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QuizAttempt" }
+        "401": { description: Authentication required }
+  /learners/me/tutor-messages:
+    get:
+      operationId: getTutorMessages
+      tags: [learning]
+      responses:
+        "200":
+          description: Tutor conversation
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/TutorMessage" } }
+    post:
+      operationId: sendTutorMessage
+      tags: [learning]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TutorMessageInput" }
+      responses:
+        "201":
+          description: Persisted user and tutor response
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/TutorMessage" } }
+        "401": { description: Authentication required }
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    LearnerProfileInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+        institution:
+          type: string
+        interests:
+          type: array
+          items:
+            type: string
+        preferences:
+          type: object
+          additionalProperties: { type: boolean }
+      required: [name, email]
+    LearnerProfileUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+        institution:
+          type: string
+        interests:
+          type: array
+          items:
+            type: string
+        preferences:
+          type: object
+          additionalProperties: { type: boolean }
+    LearnerProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        clerkUserId:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        institution:
+          type: string
+        interests:
+          type: array
+          items:
+            type: string
+        preferences:
+          type: object
+          additionalProperties: { type: boolean }
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, clerkUserId, name, email, role, institution, interests, preferences, createdAt, updatedAt]
+    CourseProgressInput:
+      type: object
+      required: [courseId, progress]
+      properties:
+        courseId: { type: string, minLength: 1 }
+        progress: { type: integer, minimum: 0, maximum: 100 }
+    CourseProgress:
+      type: object
+      required: [id, courseId, progress, completed, updatedAt]
+      properties:
+        id: { type: integer }
+        courseId: { type: string }
+        progress: { type: integer }
+        completed: { type: integer }
+        updatedAt: { type: string, format: date-time }
+    QuizAttemptInput:
+      type: object
+      required: [score, total]
+      properties:
+        score: { type: integer, minimum: 0 }
+        total: { type: integer, minimum: 1 }
+        topic: { type: string }
+    QuizAttempt:
+      type: object
+      required: [id, score, total, topic, createdAt]
+      properties:
+        id: { type: integer }
+        score: { type: integer }
+        total: { type: integer }
+        topic: { type: string }
+        createdAt: { type: string, format: date-time }
+    TutorMessageInput:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string, minLength: 1, maxLength: 4000 }
+    TutorMessage:
+      type: object
+      required: [id, role, text, createdAt]
+      properties:
+        id: { type: integer }
+        role: { type: string, enum: [user, tutor] }
+        text: { type: string }
+        createdAt: { type: string, format: date-time }
+    LearnerDashboard:
+      type: object
+      required: [profile, courseProgress, quizHistory, activity, stats, competency, badges]
+      properties:
+        profile: { $ref: "#/components/schemas/LearnerProfile" }
+        courseProgress: { type: array, items: { $ref: "#/components/schemas/CourseProgress" } }
+        quizHistory: { type: array, items: { $ref: "#/components/schemas/QuizAttempt" } }
+        activity: { type: array, items: { type: object, additionalProperties: true } }
+        stats: { type: object, additionalProperties: true }
+        competency: { type: array, items: { type: object, additionalProperties: true } }
+        badges: { type: array, items: { type: object, additionalProperties: true } }
+
