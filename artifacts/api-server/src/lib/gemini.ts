@@ -5,7 +5,7 @@ type GeminiPayload = {
 const GEMINI_MODEL = "gemini-3.6-flash";
 
 export async function generateGeminiText(prompt: string): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY?.trim().replace(/^['"]|['"]$/g, "");
   if (!apiKey) throw new Error("Gemini is not configured");
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`, {
     method: "POST",
@@ -15,7 +15,10 @@ export async function generateGeminiText(prompt: string): Promise<string> {
       generationConfig: { temperature: 0.7 },
     }),
   });
-  if (!response.ok) throw new Error(`Gemini request failed with status ${response.status}`);
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(`Gemini request failed with status ${response.status}: ${details.slice(0, 500)}`);
+  }
   const payload = await response.json() as GeminiPayload;
   const text = payload.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
   if (!text) throw new Error("Gemini returned an empty response");
@@ -23,7 +26,7 @@ export async function generateGeminiText(prompt: string): Promise<string> {
 }
 
 export async function generateGeminiJson<T>(prompt: string): Promise<T> {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY?.trim().replace(/^['"]|['"]$/g, "");
   if (!apiKey) throw new Error("Gemini is not configured");
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`, {
     method: "POST",
@@ -33,7 +36,10 @@ export async function generateGeminiJson<T>(prompt: string): Promise<T> {
       generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
     }),
   });
-  if (!response.ok) throw new Error(`Gemini request failed with status ${response.status}`);
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(`Gemini request failed with status ${response.status}: ${details.slice(0, 500)}`);
+  }
   const payload = await response.json() as GeminiPayload;
   const text = payload.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
   if (!text) throw new Error("Gemini returned an empty response");
