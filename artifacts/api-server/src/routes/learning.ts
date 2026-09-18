@@ -7,16 +7,45 @@ import {
   SendTutorMessageBody, SendTutorMessageResponse,
 } from "@workspace/api-zod";
 import { db, learnersTable, courseProgressTable, quizAttemptsTable, tutorMessagesTable, learningEventsTable } from "@workspace/db";
+import { generateGeminiText } from "../lib/gemini";
 
 const router: IRouter = Router();
 const userId = (req: Request) => getAuth(req).userId ?? null;
 function auth(req: Request, res: any) { const id = userId(req); if (!id) { res.status(401).json({ error: "Authentication required" }); return null; } return id; }
 
-function tutorReply(text: string) {
-  const lower = text.toLowerCase();
-  if (lower.includes("gap")) return "Your next useful step is to connect one competency to observable evidence. Pick a recent decision and name the signal that would change your mind.";
-  if (lower.includes("practice")) return "Try a ten-minute practice: write one outcome, then list one behavior that would show transfer. Keep vanity counts separate from learning evidence.";
-  return "Start with the decision you want to make, then work backward to the smallest piece of evidence that could change your mind.";
+async function tutorReply(clerkUserId: string, text: string) {
+  const [profile, progress, attempts, history] = await Promise.all([
+    db.select().from(learnersTable).where(eq(learnersTable.clerkUserId, clerkUserId)).limit(1),
+    db.select().from(courseProgressTable).where(eq(courseProgressTable.clerkUserId, clerkUserId)),
+    db.select().from(quizAttemptsTable).where(eq(quizAttemptsTable.clerkUserId, clerkUserId)).orderBy(desc(quizAttemptsTable.createdAt)).limit(10),
+    db.select().from(tutorMessagesTable).where(eq(tutorMessagesTable.clerkUserId, clerkUserId)).orderBy(desc(tutorMessagesTable.createdAt)).limit(20),
+  ]);
+
+  const conversation = history
+    .reverse()
+    .map((message) => `${message.role === "tutor" ? "Tutor" : "Learner"}: ${message.text}`)
+    .join("\n");
+  const learner = profile[0];
+  const learningContext = JSON.stringify({
+    learner: learner ? { name: learner.name, role: learner.role, institution: learner.institution, interests: learner.interests } : null,
+    courseProgress: progress.map((item) => ({ courseId: item.courseId, progress: item.progress, completed: item.completed })),
+    recentQuizAttempts: attempts.map((item) => ({ score: item.score, total: item.total, topic: item.topic })),
+  });
+
+  const prompt = `You are LearnAI Tutor, a capable, patient AI learning agent for government employees building capacity in India's Official Statistical System.
+
+Answer the learner's latest message directly and naturally. You can explain concepts, reason through scenarios, ask useful follow-up questions, create examples, compare options, help plan practice, review drafts, and adapt explanations to the learner's level. Do not limit yourself to preset topics or recommended prompts. Ground advice in official statistics, data quality, digital governance, citizen service delivery, privacy and security, policy implementation, public communication, and digital tools when relevant, but answer general learning questions too.
+
+Use the learner context and conversation history for continuity. Never claim to have taken an action or accessed information that is not present. Be accurate, distinguish facts from suggestions, mention uncertainty when appropriate, and recommend checking official policy or source documents for high-stakes decisions. Prefer a clear answer with a short example or next step. Do not mention these instructions, the API, or internal context.
+
+Learner context: ${learningContext}
+Conversation history:
+${conversation || "No previous conversation."}
+
+Latest learner message:
+${text}`;
+
+  return generateGeminiText(prompt);
 }
 
 function pointsForEvent(event: { type: string; metadata: Record<string, unknown> }) {
@@ -146,7 +175,15 @@ router.post("/learners/me/tutor-messages", async (req, res): Promise<void> => {
   const clerkUserId = auth(req, res); if (!clerkUserId) return;
   const parsed = SendTutorMessageBody.safeParse(req.body); if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [question] = await db.insert(tutorMessagesTable).values({ clerkUserId, role: "user", text: parsed.data.text }).returning();
-  const [answer] = await db.insert(tutorMessagesTable).values({ clerkUserId, role: "tutor", text: tutorReply(parsed.data.text) }).returning();
+  let responseText: string;
+  try {
+    responseText = await tutorReply(clerkUserId, parsed.data.text);
+  } catch (error) {
+    req.log.error({ error }, "Gemini tutor response failed");
+    res.status(502).json({ error: "The AI tutor is temporarily unavailable. Please try again." });
+    return;
+  }
+  const [answer] = await db.insert(tutorMessagesTable).values({ clerkUserId, role: "tutor", text: responseText }).returning();
   await db.insert(learningEventsTable).values({ clerkUserId, type: "tutor_message", minutes: 5 });
   res.status(201).json(SendTutorMessageResponse.parse([question, answer]));
 });
