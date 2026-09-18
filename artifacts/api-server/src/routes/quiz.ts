@@ -59,7 +59,7 @@ router.post("/learners/me/quiz", async (req: Request, res): Promise<void> => {
   const prompt = `Create exactly three original multiple-choice questions for SIH260101, an AI-enabled learning platform for strengthening capacity building in India's Official Statistical System. Assess government-employee competencies including digital governance, official statistics data quality, citizen service delivery, data privacy and security, policy implementation, public communication, and digital tools. Use realistic statistical-office scenarios and test practical application. Return JSON only as an array. Every item must have: id, topic, difficulty, prompt, options (exactly four strings), answer (one exact option), and explanation.`;
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 1, responseMimeType: "application/json" } }),
